@@ -4,7 +4,8 @@ import Dashboard from './components/Dashboard.tsx';
 import WorkoutEditor from './components/WorkoutEditor.tsx';
 import ActiveWorkout from './components/ActiveWorkout.tsx';
 import Analytics from './components/Analytics.tsx';
-import { Plus, Dumbbell, BarChart3 } from 'lucide-react';
+import Settings from './components/Settings.tsx';
+import { Plus, Dumbbell, BarChart3, Settings as SettingsIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>('DASHBOARD');
@@ -13,7 +14,7 @@ const App: React.FC = () => {
   const [bodyWeightHistory, setBodyWeightHistory] = useState<BodyWeightEntry[]>([]);
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
-  
+
   useEffect(() => {
     const savedWorkouts = localStorage.getItem('liftlog_workouts');
     const savedHistory = localStorage.getItem('liftlog_history');
@@ -71,7 +72,7 @@ const App: React.FC = () => {
 
   const handleFinishWorkout = (session: WorkoutSession) => {
     setHistory(prev => [...prev, session]);
-    setWorkouts(prev => prev.map(w => 
+    setWorkouts(prev => prev.map(w =>
       w.id === session.workoutId ? { ...w, lastPerformed: session.date } : w
     ));
     setView('DASHBOARD');
@@ -104,10 +105,16 @@ const App: React.FC = () => {
             Lift<span className="text-emerald-500">Log</span>
           </h1>
         </div>
-        
+
         <div className="flex gap-2">
           {view === 'DASHBOARD' && (
             <>
+              <button
+                onClick={() => setView('SETTINGS')}
+                className="p-2.5 bg-slate-900/50 border border-slate-800 rounded-full text-slate-400 hover:text-emerald-400 transition-all hover:bg-slate-800"
+              >
+                <SettingsIcon className="w-5 h-5" />
+              </button>
               <button
                 onClick={() => setView('ANALYTICS')}
                 className="p-2.5 bg-slate-900/50 border border-slate-800 rounded-full text-slate-400 hover:text-emerald-400 transition-all hover:bg-slate-800"
@@ -128,36 +135,39 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto px-4 py-6 max-w-4xl mx-auto w-full no-scrollbar">
         {view === 'DASHBOARD' && (
-          <Dashboard 
-            workouts={workouts} 
+          <Dashboard
+            workouts={workouts}
             history={history}
-            onEdit={handleEdit} 
+            onEdit={handleEdit}
             onDelete={handleDeleteWorkout}
             onStart={handleStartWorkout}
           />
         )}
         {view === 'EDITOR' && (
-          <WorkoutEditor 
-            workout={editingWorkout} 
-            onSave={handleSaveWorkout} 
-            onCancel={handleBackToDashboard} 
+          <WorkoutEditor
+            workout={editingWorkout}
+            onSave={handleSaveWorkout}
+            onCancel={handleBackToDashboard}
           />
         )}
         {view === 'SESSION' && activeWorkout && (
-          <ActiveWorkout 
-            workout={activeWorkout} 
+          <ActiveWorkout
+            workout={activeWorkout}
             history={history}
             onFinish={handleFinishWorkout}
             onCancel={handleBackToDashboard}
           />
         )}
         {view === 'ANALYTICS' && (
-          <Analytics 
+          <Analytics
             history={history}
             bodyWeightHistory={bodyWeightHistory}
             onAddWeight={handleAddWeight}
             onBack={handleBackToDashboard}
           />
+        )}
+        {view === 'SETTINGS' && (
+          <Settings onBack={handleBackToDashboard} />
         )}
       </main>
     </div>

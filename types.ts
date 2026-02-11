@@ -35,4 +35,4 @@ export interface BodyWeightEntry {
   weight: number;
 }
 
-export type AppView = 'DASHBOARD' | 'EDITOR' | 'SESSION' | 'ANALYTICS';
+export type AppView = 'DASHBOARD' | 'EDITOR' | 'SESSION' | 'ANALYTICS' | 'SETTINGS';

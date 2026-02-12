@@ -36,3 +36,7 @@ export interface BodyWeightEntry {
 }
 
 export type AppView = 'DASHBOARD' | 'EDITOR' | 'SESSION' | 'ANALYTICS' | 'SETTINGS';
+
+export interface AppSettings {
+  smartRestTimer: boolean;
+}

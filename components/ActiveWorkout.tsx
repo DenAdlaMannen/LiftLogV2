@@ -17,7 +17,7 @@ interface ActiveWorkoutProps {
 
 const Sparkline: React.FC<{ data: number[], color?: string, height?: number }> = ({ data, color = "#10b981", height = 30 }) => {
   if (data.length < 2) return <div className="text-[10px] text-slate-600 font-bold uppercase italic">No history</div>;
-  
+
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -66,13 +66,13 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
 
   const sortedExercises = useMemo(() => {
     return [...workout.exercises].sort((a, b) => {
-      const timeA = lastPerformedMap.get(a.name.toLowerCase()) || 0; 
+      const timeA = lastPerformedMap.get(a.name.toLowerCase()) || 0;
       const timeB = lastPerformedMap.get(b.name.toLowerCase()) || 0;
       if (timeA !== timeB) return timeA - timeB;
       return workout.exercises.indexOf(a) - workout.exercises.indexOf(b);
     });
   }, [workout.exercises, lastPerformedMap]);
-  
+
   const [liveSessionData, setLiveSessionData] = useState<Record<string, SetData[]>>(() => {
     const initialData: Record<string, SetData[]> = {};
     const exerciseHistoryMap = new Map<string, ExerciseSession>();
@@ -106,8 +106,59 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
     return () => clearInterval(timer);
   }, []);
 
+  const [settings] = useState<{ smartRestTimer?: boolean }>(() => {
+    try { return JSON.parse(localStorage.getItem('liftlog_settings') || '{}'); } catch { return {}; }
+  });
+  const [exerciseDurations, setExerciseDurations] = useState<Record<string, number>>({});
+  const [isTiming, setIsTiming] = useState<string | null>(null);
+  const [timerStart, setTimerStart] = useState<number | null>(null);
+
   const totalExercises = sortedExercises.length;
   const progress = (completedExercises.size / totalExercises) * 100;
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTiming && timerStart) {
+      interval = setInterval(() => {
+        const diff = Math.floor((Date.now() - timerStart) / 1000);
+        setExerciseDurations(prev => ({ ...prev, [isTiming]: diff }));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTiming, timerStart]);
+
+  const toggleTimer = (exId: string) => {
+    if (isTiming === exId) {
+      setIsTiming(null);
+      setTimerStart(null);
+    } else {
+      setIsTiming(exId);
+      setTimerStart(Date.now());
+      // Reset duration for this exercise start
+      setExerciseDurations(prev => ({ ...prev, [exId]: 0 }));
+    }
+  };
+
+  const calculateRestStats = () => {
+    let totalActiveSeconds = 0;
+    sortedExercises.forEach(ex => {
+      // Default to 45s if not measured, but only calculate if we have sets
+      // Actually user requests user-measured time. If not measured, maybe ignore or default?
+      // Let's use 0 if not measured to strictly follow "estimated based on... this one set"
+      // Or better: default to 30s to make it useful immediately, but let them override.
+      // User said: "based on the time it took... to do this one set".
+      // Implies measurement is key. Let's start with 0 active time if not measured, 
+      // so they see the value of measuring.
+      const duration = exerciseDurations[ex.id] || 0;
+      const setsCount = liveSessionData[ex.id]?.length || 0;
+      totalActiveSeconds += setsCount * duration;
+    });
+
+    const restSeconds = Math.max(0, seconds - totalActiveSeconds);
+    return { active: totalActiveSeconds, rest: restSeconds };
+  };
+
+  const { active: activeSeconds, rest: restSeconds } = calculateRestStats();
 
   const formatTime = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -214,7 +265,14 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-slate-800 rounded-lg text-emerald-400"><Timer className="w-5 h-5" /></div>
-          <span className="text-xl font-mono font-bold text-white">{formatTime(seconds)}</span>
+          <div>
+            <span className="text-xl font-mono font-bold text-white block leading-none">{formatTime(seconds)}</span>
+            {settings.smartRestTimer && (
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                Rest: <span className="text-blue-400">{formatTime(restSeconds)}</span>
+              </span>
+            )}
+          </div>
         </div>
         <button onClick={onCancel} className="p-2 text-slate-500 hover:text-white transition-colors bg-slate-900 rounded-full border border-slate-800"><X className="w-5 h-5" /></button>
       </div>
@@ -231,11 +289,11 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
             const isCompleted = completedExercises.has(ex.id);
             const isNoteActive = showNoteInput === ex.id;
             const hasLastNote = !!stats?.lastNote;
-            
+
             return (
               <div key={ex.id} className="w-full h-full flex-shrink-0 px-1">
                 <div className={`bg-slate-900 border-2 rounded-[2rem] p-5 sm:p-7 h-full flex flex-col transition-all duration-300 ${i === currentIndex ? 'border-emerald-500/30 opacity-100 scale-100 shadow-2xl shadow-emerald-500/10' : 'border-slate-800 opacity-20 scale-95'}`}>
-                  
+
                   <div className="relative text-center mb-4">
                     <div className="flex justify-center items-center gap-2 mb-1">
                       <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Ex {i + 1} / {totalExercises}</span>
@@ -253,10 +311,10 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
                       )}
                     </div>
                     <h3 className="text-2xl font-black text-white leading-tight mb-2">{ex.name}</h3>
-                    
+
                     <div className="flex items-center justify-center gap-2">
                       {hasLastNote && (
-                        <button 
+                        <button
                           onClick={() => setShowPrevNote(showPrevNote === ex.id ? null : ex.id)}
                           className={`p-1.5 rounded-full transition-all border flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${showPrevNote === ex.id ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-white'}`}
                         >
@@ -264,7 +322,7 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
                           Last Note
                         </button>
                       )}
-                      <button 
+                      <button
                         onClick={() => setShowNoteInput(isNoteActive ? null : ex.id)}
                         className={`p-1.5 rounded-full transition-all border flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${notes[ex.id] ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-white'}`}
                       >
@@ -272,6 +330,23 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
                         Add Note
                       </button>
                     </div>
+
+                    {settings.smartRestTimer && (
+                      <div className="mt-4 flex justify-center">
+                        <button
+                          onClick={() => toggleTimer(ex.id)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold uppercase tracking-wider transition-all ${isTiming === ex.id
+                              ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse'
+                              : exerciseDurations[ex.id]
+                                ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400'
+                                : 'bg-slate-800 border-slate-700 text-slate-500'
+                            }`}
+                        >
+                          <Timer className="w-3.5 h-3.5" />
+                          {isTiming === ex.id ? 'Stop Timer' : exerciseDurations[ex.id] ? `Set Time: ${exerciseDurations[ex.id]}s` : 'Time One Set'}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {showPrevNote === ex.id && stats?.lastNote && (
@@ -322,7 +397,7 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
                       <button onClick={() => {
                         setLiveSessionData(prev => {
                           const s = [...prev[ex.id]];
-                          s.push({ ...(s[s.length-1] || { weight: 0, reps: 0 }) });
+                          s.push({ ...(s[s.length - 1] || { weight: 0, reps: 0 }) });
                           return { ...prev, [ex.id]: s };
                         });
                       }} className="w-full py-2.5 border border-dashed border-slate-700 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-emerald-500 hover:border-emerald-500/50 transition-all flex items-center justify-center gap-1.5"><Plus className="w-3 h-3" />Add Set</button>
@@ -336,7 +411,7 @@ const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({ workout, history, onFinis
                         <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Historical Progress</span>
                       </div>
                       <div className="flex gap-4">
-                        <div className="text-[8px] font-bold uppercase text-emerald-400">1RM: {stats?.oneRM.length ? `${stats.oneRM[stats.oneRM.length-1]}kg` : '-'}</div>
+                        <div className="text-[8px] font-bold uppercase text-emerald-400">1RM: {stats?.oneRM.length ? `${stats.oneRM[stats.oneRM.length - 1]}kg` : '-'}</div>
                       </div>
                     </div>
                     {stats && stats.oneRM.length > 0 ? (

@@ -148,6 +148,35 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
           </button>
         </section>
 
+        {/* EXPERIMENTS */}
+        <section className="bg-indigo-950/20 border border-indigo-900/30 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-indigo-400 mb-4 flex items-center gap-2">
+            <span className="text-xl">🧪</span>
+            Experimental Features
+          </h3>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-white">Smart Rest Timer</div>
+              <div className="text-xs text-indigo-300/60">Estimate rest time by timing one set</div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={localStorage.getItem('liftlog_settings')?.includes('"smartRestTimer":true') || false}
+                onChange={(e) => {
+                  const settings = { smartRestTimer: e.target.checked };
+                  localStorage.setItem('liftlog_settings', JSON.stringify(settings));
+                  // Force re-render not strictly needed as we just set localstorage, but good for UI feedback
+                  window.location.reload();
+                }}
+              />
+              <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+        </section>
+
         <div className="text-center text-xs text-slate-600 mt-8">
           LiftLog v1.2.0 (Offline PWA)
         </div>

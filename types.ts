@@ -21,6 +21,7 @@ export interface ExerciseSession {
   reps: number;
   sets: number;
   note?: string;
+  restTime?: number;
 }
 
 export interface WorkoutSession {

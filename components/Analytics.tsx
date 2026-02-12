@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { WorkoutSession, BodyWeightEntry } from '../types.ts';
-import { ChevronLeft, Scale, Activity, TrendingUp, TrendingDown, MoveRight, Calendar as CalendarIcon, Plus, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Scale, Activity, TrendingUp, TrendingDown, MoveRight, Calendar as CalendarIcon, Plus, ChevronRight, Timer } from 'lucide-react';
 
 interface AnalyticsProps {
   history: WorkoutSession[];
@@ -98,15 +98,14 @@ const WorkoutCalendar: React.FC<{ history: WorkoutSession[] }> = ({ history }) =
           const hasWorkout = workoutDays.has(date.toDateString());
           const isToday = date.toDateString() === new Date().toDateString();
           return (
-            <div 
+            <div
               key={day}
-              className={`aspect-square flex items-center justify-center rounded-xl text-sm font-bold transition-all border ${
-                hasWorkout 
-                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-900/40' 
-                  : isToday
+              className={`aspect-square flex items-center justify-center rounded-xl text-sm font-bold transition-all border ${hasWorkout
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-900/40'
+                : isToday
                   ? 'bg-slate-800 border-slate-700 text-emerald-400'
                   : 'bg-slate-950/50 border-slate-800/50 text-slate-600'
-              }`}
+                }`}
             >
               {day}
             </div>
@@ -140,6 +139,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ history, bodyWeightHistory, onAdd
     const totalVolume = sessionVolumes.reduce((acc, v) => acc + v, 0);
     const avgVolume = history.length ? Math.round(totalVolume / history.length) : 0;
     const latestWeight = bodyWeightHistory.length ? bodyWeightHistory[bodyWeightHistory.length - 1].weight : 0;
+
+    // Check setting for smart rest (read directly from localStorage as we don't pass settings prop here yet)
+    let showSmartRest = false;
+    try {
+      const s = JSON.parse(localStorage.getItem('liftlog_settings') || '{}');
+      showSmartRest = !!s.smartRestTimer;
+    } catch { }
+
     let workoutsPerWeek = "0";
     if (history.length > 0) {
       const dates = history.map(h => new Date(h.date).getTime());
@@ -163,7 +170,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ history, bodyWeightHistory, onAdd
         else trend = 'neutral';
       }
     }
-    return { totalVolume, avgVolume, latestWeight, totalWorkouts: history.length, workoutsPerWeek, trend };
+    return { totalVolume, avgVolume, latestWeight, totalWorkouts: history.length, workoutsPerWeek, trend, showSmartRest };
   }, [history, bodyWeightHistory]);
 
   const handleWeightSubmit = (e: React.FormEvent) => {
@@ -207,9 +214,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ history, bodyWeightHistory, onAdd
         </div>
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
           <CalendarIcon className="w-4 h-4 text-amber-500 mb-2" />
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Workouts / Week</span>
           <span className="text-xl font-bold">{stats.workoutsPerWeek}</span>
         </div>
+
+        {stats.showSmartRest && (
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <Timer className="w-4 h-4 text-indigo-500 mb-2" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Avg Rest</span>
+            <span className="text-xl font-bold">
+              {(() => {
+                const rests = history.flatMap(s => s.exercises.map(e => e.restTime).filter((r): r is number => r !== undefined && r > 0));
+                if (rests.length === 0) return '-';
+                const avg = Math.round(rests.reduce((a, b) => a + b, 0) / rests.length);
+                return `${Math.floor(avg / 60)}m ${avg % 60}s`;
+              })()}
+            </span>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <WorkoutCalendar history={history} />

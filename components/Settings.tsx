@@ -13,7 +13,8 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
       workouts: localStorage.getItem('liftlog_workouts'),
       history: localStorage.getItem('liftlog_history'),
       weight: localStorage.getItem('liftlog_weight'),
-      version: '1.0',
+      settings: localStorage.getItem('liftlog_settings'),
+      version: '1.1',
       exportDate: new Date().toISOString()
     };
 
@@ -52,6 +53,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
         if (data.workouts) localStorage.setItem('liftlog_workouts', data.workouts);
         if (data.history) localStorage.setItem('liftlog_history', data.history);
         if (data.weight) localStorage.setItem('liftlog_weight', data.weight);
+        if (data.settings) localStorage.setItem('liftlog_settings', data.settings);
 
         alert("Data restored successfully! The app will now reload.");
         window.location.reload();
@@ -68,6 +70,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
       localStorage.removeItem('liftlog_workouts');
       localStorage.removeItem('liftlog_history');
       localStorage.removeItem('liftlog_weight');
+      localStorage.removeItem('liftlog_settings');
       alert("All data cleared.");
       window.location.reload();
     }
